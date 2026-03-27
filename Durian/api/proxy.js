@@ -1,92 +1,126 @@
-// 🔍 ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ — покажет, что получает сервер
+// @ts-nocheck
 
 export const config = {
-  runtime: 'edge', // 🔥 Пробуем edge runtime (лучше парсит JSON)
+  runtime: 'edge',
 };
 
-export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+export default async function handler(request) {
+  // CORS headers
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  // Handle preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
+  }
+
+  // Only allow POST
+  if (request.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ code: 405, msg: 'Method not allowed' }),
+      { 
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
 
   try {
-    // 🔍 ЛОГИРУЕМ ВСЁ, что приходит
-    console.log('📦 RAW req.body:', req.body);
-    console.log('📦 Type of req.body:', typeof req.body);
+    // 🔥 Читаем тело как текст и парсим
+    const text = await request.text();
+    console.log('📦 Raw body:', text);
     
-    // Пытаемся получить данные
-    let data;
-    
-    // Для edge runtime: нужно явно читать текст
-    if (req.json && typeof req.json === 'function') {
-      data = await req.json();
-      console.log('✅ Parsed via req.json():', data);
-    } 
-    // Для nodejs runtime: body уже распарсен
-    else if (typeof req.body === 'object' && req.body !== null) {
-      data = req.body;
-      console.log('✅ Using req.body as object:', data);
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch (e) {
+      console.error('❌ Parse error:', e);
+      return new Response(
+        JSON.stringify({ 
+          code: 400, 
+          msg: 'Invalid JSON body',
+          rawBody: text,
+          error: e.message 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
-    // Если строка — парсим
-    else if (typeof req.body === 'string') {
-      data = JSON.parse(req.body);
-      console.log('✅ Parsed string body:', data);
+
+    console.log('✅ Parsed body:', body);
+
+    const { endpoint, params, username, apikey } = body;
+
+    // Валидация
+    if (!endpoint || !username || !apikey) {
+      return new Response(
+        JSON.stringify({ 
+          code: 400, 
+          msg: 'Missing required fields',
+          received: { endpoint, username: !!username, apikey: !!apikey }
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
-    else {
-      // 🔴 Не смогли распарсить — возвращаем диагностику
-      return res.status(400).json({
-        code: 400,
-        msg: 'Invalid JSON body',
-        debug: {
-          bodyType: typeof req.body,
-          bodyValue: req.body,
-          bodyString: String(req.body)
+
+    // Формируем URL для Durian API
+    const url = new URL(`https://api.durianrcs.com/out/ext_api/${endpoint}`);
+    url.searchParams.append('name', username);
+    url.searchParams.append('ApiKey', apikey);
+
+    if (params && typeof params === 'object') {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== '') {
+          url.searchParams.append(key, String(value));
         }
       });
     }
 
-    // Достаём поля
-    const { endpoint, params, username, apikey } = data;
-    
-    console.log('🔑 Полученные данные:', { endpoint, username, apikey: apikey ? '***' : undefined });
-
-    // Валидация
-    if (!endpoint || !username || !apikey) {
-      return res.status(400).json({
-        code: 400,
-        msg: 'Missing fields',
-        received: { endpoint, username: !!username, apikey: !!apikey }
-      });
-    }
+    console.log('🔗 Requesting:', url.toString());
 
     // Запрос к Durian
-    const url = new URL(`https://api.durianrcs.com/out/ext_api/${endpoint}`);
-    url.searchParams.append('name', username);
-    url.searchParams.append('ApiKey', apikey);
-    
-    if (params && typeof params === 'object') {
-      Object.entries(params).forEach(([k, v]) => {
-        if (v) url.searchParams.append(k, String(v));
-      });
-    }
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Durian-Dashboard/1.0'
+      }
+    });
 
-    const response = await fetch(url.toString());
-    const result = await response.json();
-    
-    return res.status(200).json(result);
+    const data = await response.json();
+    console.log('✅ Durian response:', data);
+
+    return new Response(
+      JSON.stringify(data),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
 
   } catch (error) {
     console.error('💥 Proxy error:', error);
-    return res.status(500).json({
-      code: 500,
-      msg: 'Server error',
-      error: error.message,
-      stack: error.stack
-    });
+    return new Response(
+      JSON.stringify({ 
+        code: 500, 
+        msg: 'Server error',
+        error: error.message 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
 }
- 
