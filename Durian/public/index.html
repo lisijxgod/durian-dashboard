@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Durian SMS Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📱 Durian SMS Dashboard</h1>
+      <button id="toggle-settings" class="btn-secondary">⚙️ Настройки</button>
+    </header>
+
+    <!-- Блок настроек -->
+    <section id="settings-panel" class="panel hidden">
+      <h2>🔐 Настройки API</h2>
+      <div class="form-group">
+        <label for="username">Username (Логин)</label>
+        <input type="text" id="username" placeholder="Ваш логин на Durian">
+      </div>
+      <div class="form-group">
+        <label for="apikey">ApiKey (Токен)</label>
+        <div class="input-with-toggle">
+          <input type="password" id="apikey" placeholder="Ваш API ключ">
+          <button type="button" id="toggle-apikey" class="btn-icon">👁️</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="default-pid">PID сервиса по умолчанию</label>
+        <input type="text" id="default-pid" placeholder="Например: 123">
+      </div>
+      <div class="form-group">
+        <label for="default-country">Страна по умолчанию</label>
+        <select id="default-country">
+          <option value="us">🇺🇸 USA</option>
+          <option value="ru">🇷🇺 Russia</option>
+          <option value="gb">🇬🇧 UK</option>
+          <option value="de">🇩🇪 Germany</option>
+          <option value="fr">🇫🇷 France</option>
+          <option value="ca">🇨🇦 Canada</option>
+          <option value="au">🇦🇺 Australia</option>
+          <option value="any">🌍 Любая страна</option>
+        </select>
+      </div>
+      <div class="button-group">
+        <button id="save-settings" class="btn-primary">💾 Сохранить</button>
+        <button id="test-connection" class="btn-secondary">🔍 Проверить ключ</button>
+        <button id="clear-settings" class="btn-danger">🗑️ Очистить</button>
+      </div>
+      <div id="settings-status" class="status-message"></div>
+    </section>
+
+    <!-- Основная панель -->
+    <section class="panel main-panel">
+      <div class="selectors-row">
+        <div class="form-group">
+          <label for="country">🌍 Страна</label>
+          <select id="country">
+            <option value="us">🇺🇸 USA</option>
+            <option value="ru">🇷🇺 Russia</option>
+            <option value="gb">🇬🇧 UK</option>
+            <option value="de">🇩🇪 Germany</option>
+            <option value="fr">🇫🇷 France</option>
+            <option value="ca">🇨🇦 Canada</option>
+            <option value="au">🇦🇺 Australia</option>
+            <option value="any">🌍 Любая страна</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pid">🔧 Сервис (PID)</label>
+          <input type="text" id="pid" placeholder="ID сервиса">
+        </div>
+      </div>
+
+      <div class="button-group main-buttons">
+        <button id="get-number" class="btn-primary btn-large">📞 Get Number</button>
+        <button id="release-number" class="btn-secondary btn-large" disabled>🗑️ Release</button>
+        <button id="blacklist-number" class="btn-danger btn-large" disabled>⛔ Blacklist</button>
+      </div>
+
+      <div class="display-row">
+        <div class="form-group">
+          <label for="phone-display">📱 Номер телефона</label>
+          <div class="input-with-button">
+            <input type="text" id="phone-display" readonly placeholder="Здесь появится номер">
+            <button type="button" id="copy-number" class="btn-icon" disabled>📋</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="sms-code">🔐 SMS Код</label>
+          <div class="input-with-button">
+            <input type="text" id="sms-code" readonly placeholder="Ожидание SMS...">
+            <button type="button" id="copy-code" class="btn-icon" disabled>📋</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="timer-section">
+        <label>⏱️ Осталось времени</label>
+        <div class="timer-display" id="timer-display">00:00</div>
+        <div class="timer-bar">
+          <div class="timer-bar-fill" id="timer-bar-fill"></div>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="check-sms" class="btn-secondary" disabled>🔄 Проверить SMS</button>
+        <button id="auto-poll-toggle" class="btn-secondary">🤖 Авто-опрос: ВЫКЛ</button>
+      </div>
+    </section>
+
+    <!-- Лог событий -->
+    <section class="panel">
+      <h2>📋 Лог событий</h2>
+      <div id="event-log" class="event-log"></div>
+      <button id="clear-log" class="btn-secondary btn-small">🗑️ Очистить лог</button>
+    </section>
+
+    <footer>
+      <p>⚡ Работает через Vercel Serverless Proxy | API v2.0</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
